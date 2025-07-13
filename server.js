@@ -39,55 +39,55 @@ app.post('/api/users', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
+    const { username, password } = req.body;
 
-  try {
-    const pool = await poolPromise;  // берём уже подключённый пул
-    const result = await pool.request()
-      .input('username', sql.VarChar, username)
-      .query('SELECT id, password FROM users WHERE username = @username');
+    try {
+        const pool = await poolPromise;  // берём уже подключённый пул
+        const result = await pool.request()
+            .input('username', sql.VarChar, username)
+            .query('SELECT id, password FROM users WHERE username = @username');
 
-    if (result.recordset.length === 0) {
-      return res.json({ success: false, message: 'Пользователь не найден' });
+        if (result.recordset.length === 0) {
+            return res.json({ success: false, message: 'Пользователь не найден' });
+        }
+
+        const user = result.recordset[0];
+
+        if (user.password === password) {
+            return res.json({ success: true, message: 'Успешный вход', userId: user.id });
+        } else {
+            return res.json({ success: false, message: 'Неверный пароль' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Ошибка сервера' });
     }
-
-    const user = result.recordset[0];
-
-    if (user.password === password) {
-      return res.json({ success: true, message: 'Успешный вход', userId: user.id });
-    } else {
-      return res.json({ success: false, message: 'Неверный пароль' });
-    }
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Ошибка сервера' });
-  }
 });
 
 app.post('/api/adminLogin', async (req, res) => {
-  const { username, password } = req.body;
+    const { username, password } = req.body;
 
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('username', sql.NVarChar, username)
-      .input('password', sql.NVarChar, password)
-      .query(`
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('username', sql.NVarChar, username)
+            .input('password', sql.NVarChar, password)
+            .query(`
         SELECT Id, Username
         FROM AdminUsers
         WHERE Username = @username AND Password = @password
       `);
 
-    if (result.recordset.length === 0) {
-      return res.json({ success: false, message: 'Неверный логин или пароль' });
-    }
+        if (result.recordset.length === 0) {
+            return res.json({ success: false, message: 'Неверный логин или пароль' });
+        }
 
-    const admin = result.recordset[0];
-    return res.json({ success: true, message: 'Вход успешен', admin });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Ошибка сервера' });
-  }
+        const admin = result.recordset[0];
+        return res.json({ success: true, message: 'Вход успешен', admin });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Ошибка сервера' });
+    }
 });
 
 app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
@@ -233,50 +233,50 @@ app.delete('/api/admin/delete-user/:username', async (req, res) => {
 });
 
 app.put('/api/admin/update-user/:username', async (req, res) => {
-  try {
-    const oldUsername = req.params.username;
-    const { newUsername, newPassword } = req.body;
+    try {
+        const oldUsername = req.params.username;
+        const { newUsername, newPassword } = req.body;
 
-    if (!oldUsername) {
-      return res.status(400).json({ success: false, message: 'Username обязателен' });
+        if (!oldUsername) {
+            return res.status(400).json({ success: false, message: 'Username обязателен' });
+        }
+
+        if (!newUsername && !newPassword) {
+            return res.status(400).json({ success: false, message: 'Нужно хотя бы новое имя или новый пароль' });
+        }
+
+        const pool = await poolPromise;
+
+        // Формируем запрос обновления в зависимости от переданных данных
+        let query = 'UPDATE Users SET ';
+        const inputs = [];
+
+        if (newUsername) {
+            query += 'Username = @newUsername';
+            inputs.push({ name: 'newUsername', value: newUsername });
+        }
+        if (newPassword) {
+            if (inputs.length) query += ', ';
+            query += 'Password = @newPassword';
+            inputs.push({ name: 'newPassword', value: newPassword });
+        }
+        query += ' WHERE Username = @oldUsername';
+
+        const request = pool.request();
+        request.input('oldUsername', sql.NVarChar, oldUsername);
+        inputs.forEach(input => request.input(input.name, sql.NVarChar, input.value));
+
+        const result = await request.query(query);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ success: false, message: 'Пользователь не найден' });
+        }
+
+        res.json({ success: true, message: 'Данные пользователя обновлены' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Ошибка сервера' });
     }
-
-    if (!newUsername && !newPassword) {
-      return res.status(400).json({ success: false, message: 'Нужно хотя бы новое имя или новый пароль' });
-    }
-
-    const pool = await poolPromise;
-
-    // Формируем запрос обновления в зависимости от переданных данных
-    let query = 'UPDATE Users SET ';
-    const inputs = [];
-
-    if (newUsername) {
-      query += 'Username = @newUsername';
-      inputs.push({ name: 'newUsername', value: newUsername });
-    }
-    if (newPassword) {
-      if (inputs.length) query += ', ';
-      query += 'Password = @newPassword';
-      inputs.push({ name: 'newPassword', value: newPassword });
-    }
-    query += ' WHERE Username = @oldUsername';
-
-    const request = pool.request();
-    request.input('oldUsername', sql.NVarChar, oldUsername);
-    inputs.forEach(input => request.input(input.name, sql.NVarChar, input.value));
-
-    const result = await request.query(query);
-
-    if (result.rowsAffected[0] === 0) {
-      return res.status(404).json({ success: false, message: 'Пользователь не найден' });
-    }
-
-    res.json({ success: true, message: 'Данные пользователя обновлены' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Ошибка сервера' });
-  }
 });
 
 app.get('/api/users/search', async (req, res) => {
