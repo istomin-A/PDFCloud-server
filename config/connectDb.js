@@ -1,9 +1,16 @@
 // config/db.js
-import sql from 'mssql/msnodesqlv8.js';
+import sql from 'mssql';
 
 const config = {
-    connectionString: 'Driver={ODBC Driver 17 for SQL Server};Server=localhost\\SQLEXPRESS;Database=PDFCloud;Trusted_Connection=Yes;'
-};
+    user: 'CloudSA0a679907',
+    password: 'ABer2f5e.wr',
+    server: 'pdfcloud.database.windows.net',
+    database: 'PDFCloud',
+    options: {
+        encrypt: true,
+        trustServerCertificate: false
+    }
+}
 
 // экспортируем пул соединений
 const poolPromise = sql.connect(config)
