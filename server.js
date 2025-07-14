@@ -16,13 +16,17 @@ app.use(cors());
 app.use(express.json());
 
 // Получить всех пользователей
-app.get('/api/users', async (req, res) => {
+app.get('/api/all-users', async (req, res) => {
     try {
-        const users = await poolPromise;
-        res.json(users);
+        const pool = await poolPromise;
+
+        const result = await pool.request()
+            .query('SELECT id, Username, password FROM Users ORDER BY CreatedAt DESC');
+
+        res.json(result.recordset)
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Ошибка сервера' });
+        res.status(500).json({ success: false, message: 'Ошибка при получении списка пользователей' });
     }
 });
 
