@@ -21,7 +21,7 @@ app.get('/api/all-users', async (req, res) => {
         const pool = await poolPromise;
 
         const result = await pool.request()
-            .query('SELECT id, Username, password FROM Users ORDER BY CreatedAt DESC');
+            .query('SELECT id, Username, password FROM Users ORDER BY id DESC');
 
         res.json(result.recordset)
     } catch (err) {
